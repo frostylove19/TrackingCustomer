@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giver Team 計算淨利與顧客紀錄系統</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #F9F7F5;
+            --card-bg: #FFFFFF;
+            --primary-text: #5D5650;
+            --secondary-text: #8D8580;
+            --accent-color: #BCAaa4; /* 藕粉/裸色 */
+            --vip-color: #D4AF37; /* 金色 VIP */
+            --mix-color: #D81B60; /* 桃紅 Mix */
+            --wholesale-color: #2E7D32; /* 綠色 批發 */
+            --border-color: #EFEBE9;
+            --btn-color: #D7CCC8;
+            --btn-hover: #A1887F;
+            --radius: 16px;
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: bold;
+            color: var(--primary-text);
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--secondary-text);
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        /* --- 角色切換 Tabs --- */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid var(--accent-color);
+            color: var(--secondary-text);
+            padding: 8px 15px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.85rem; 
+            white-space: nowrap; 
+        }
+
+        .tab-btn.active {
+            background-color: var(--accent-color);
+            color: white;
+            box-shadow: 0 4px 10px rgba(188, 170, 164, 0.4);
+        }
+
+        .tab-btn:hover:not(.active) {
+            background-color: var(--border-color);
+        }
+
+        /* --- 卡片樣式 --- */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+            margin-bottom: 20px;
+            border: 1px solid white;
+        }
+
+        .card-header {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            color: var(--accent-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* --- 表單元素 --- */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: var(--secondary-text);
+        }
+
+        input[type="text"], input[type="date"], textarea, input[type="file"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #FAFAFA;
+            color: var(--primary-text);
+            box-sizing: border-box;
+            outline: none;
+            transition: border 0.3s;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            border-color: var(--accent-color);
+        }
+
+        textarea {
+            resize: vertical;
+            height: 80px;
+        }
+
+        select {
+            cursor: pointer;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23BCAaa4%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 0.65em auto;
+            appearance: none;
+        }
+
+        /* --- 產品列表 --- */
+        .product-category {
+            margin-bottom: 30px; 
+        }
+
+        /* 大標題 Panel 樣式 */
+        .category-title {
+            font-size: 1.15rem;
+            color: #FFFFFF;
+            background-color: var(--primary-text);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            margin-top: 10px;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            border-left: 6px solid var(--accent-color);
+        }
+        
+        .product-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px dashed var(--border-color);
+        }
+
+        .product-info {
+            flex: 1;
+        }
+
+        .product-name {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .product-price-hint {
+            font-size: 0.85rem;
+            color: var(--secondary-text);
+            display: block;
+        }
+
+        .qty-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .qty-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--accent-color);
+            background: white;
+            color: var(--accent-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            user-select: none;
+        }
+        
+        .qty-btn:hover {
+            background-color: var(--bg-color);
+        }
+
+        .qty-input {
+            width: 45px !important;
+            text-align: center;
+            padding: 5px !important;
+            margin: 0;
+            font-weight: bold;
+        }
+
+        /* --- 總結與按鈕 --- */
+        .summary-box {
+            background-color: #FDFBF9;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+
+        .summary-row.total {
+            border-top: 2px solid var(--border-color);
+            padding-top: 15px;
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #8D6E63;
+        }
+
+        .profit-highlight {
+            color: var(--mix-color);
+        }
+
+        .action-area {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(188, 170, 164, 0.4);
+            transition: transform 0.2s, background 0.3s;
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--btn-hover);
+            transform: translateY(-2px);
+        }
+
+        .file-upload-wrapper {
+            border: 2px dashed var(--accent-color);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 20px;
+            background-color: rgba(255,255,255,0.5);
+        }
+
+        .status-tag {
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background-color: var(--border-color);
+            color: var(--secondary-text);
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .status-tag.active-mix {
+            background-color: #F8BBD0;
+            color: #880E4F;
+        }
+
+        .status-tag.active-vip {
+            background-color: #FFF8E1;
+            color: #F57F17;
+            border: 1px solid #FFE082;
+            box-shadow: 0 2px 5px rgba(212, 175, 55, 0.2);
+        }
+
+        .status-tag.active-wholesale {
+            background-color: #E8F5E9;
+            color: #1B5E20;
+            border: 1px solid #A5D6A7;
+        }
+        
+        .tier-status {
+            font-weight: bold;
+            color: var(--mix-color);
+        }
+        
+        /* 輔助類別：用來隱藏不需要顯示的行 */
+        .hidden-row {
+            display: none !important;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Giver Team 計算淨利與顧客紀錄系統</h1>
+    <div class="subtitle">VIP Tier & Order Management (產品總數: 26項)</div>
+
+    <div class="tabs">
+        <button class="tab-btn" id="tier-level2" onclick="selectTier('level2')">二級輔導</button>
+        <button class="tab-btn" id="tier-level3_coach" onclick="selectTier('level3_coach')">三級輔導</button>
+        <button class="tab-btn active" id="tier-level3_retail" onclick="selectTier('level3_retail')">三級零售</button>
+        <button class="tab-btn" id="tier-intern" onclick="selectTier('intern')">實習加盟</button>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span><i class="far fa-user"></i> 顧客與銷售對象</span>
+            <input type="date" id="orderDate" style="width: auto; padding: 5px; font-family:inherit;">
+        </div>
+        
+        <div class="form-group">
+            <label style="color: var(--accent-color); font-weight:bold;">銷售對象 (決定售價)</label>
+            <select id="salesTarget" onchange="calculateTotal()">
+                <option value="consumer">一般零售顧客 (適用 VIP/混搭優惠)</option>
+                </select>
+        </div>
+
+        <div class="form-group">
+            <label>顧客姓名</label>
+            <input type="text" id="customerName" placeholder="請輸入姓名">
+        </div>
+        <div class="form-group">
+            <label>備註 (顧客痛點/需求)</label>
+            <textarea id="customerNote" placeholder="例如：想改善便秘、產後修復..."></textarea>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span>
+                <i class="fas fa-shopping-basket"></i> 
+                產品選擇 
+                (<span id="activeTierName" class="tier-status">三級零售成本</span>)
+            </span>
+            <span id="priceStatus" class="status-tag">單品計價中</span>
+        </div>
+        
+        <div class="product-category">
+            <div class="category-title">纖體組合 (共 9 項)</div>
+            <div id="slimming-list"></div>
+        </div>
+
+        <div class="product-category">
+            <div class="category-title">大健康系列 (共 6 項)</div>
+            <div id="health-list"></div>
+        </div>
+        
+        <div class="product-category">
+            <div class="category-title">美肌系列 (共 11 項)</div>
+            <div id="others-list"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span><i class="fas fa-calculator"></i> 訂單試算</span>
+        </div>
+        
+        <div class="summary-box">
+            <div class="summary-row">
+                <span>總數量</span>
+                <span id="totalQty">0</span>
+            </div>
+            <div class="summary-row" id="rawRetailRow" style="color: var(--secondary-text); font-size: 0.85rem;">
+                <span>原零售總額 (判斷VIP門檻用)</span>
+                <span id="rawRetailTotal">$0</span>
+            </div>
+            <hr style="border-top:1px dashed #eee; width:100%;">
+            <div class="summary-row">
+                <span>總成本 (Cost)</span>
+                <span id="totalCost">$0</span>
+            </div>
+            <div class="summary-row">
+                <span>最終售價 (Revenue)</span>
+                <span id="totalRevenue" style="font-weight:bold;">$0</span>
+            </div>
+            <div class="summary-row total">
+                <span>本單淨利潤 (Profit)</span>
+                <span id="totalProfit" class="profit-highlight">$0</span>
+            </div>
+        </div>
+
+        <div class="file-upload-wrapper">
+            <p style="margin-top:0; color:var(--secondary-text); font-size:0.9rem;">
+                <i class="fas fa-file-excel"></i> 
+                若要累積紀錄，請選擇舊的 Excel 檔案：
+            </p>
+            <input type="file" id="oldFile" accept=".xlsx, .xls" />
+        </div>
+
+        <div class="action-area">
+            <button class="btn-primary" onclick="exportToExcel()">
+                <i class="fas fa-download"></i> 產出並下載美化 Excel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 預設從三級零售開始計算
+    let activeTier = 'level3_retail'; 
+
+    // --- 資料設定 ---
+    const products = {
+        slimming: [
+            { name: "小綠-纖纖飲", cost_intern: 1160, cost_coach: 955, cost_retail: 990, cost_level2: 880, retail: 1480, mix: 1380, vip: 1280 },
+            { name: "纖飄錠", cost_intern: 1160, cost_coach: 955, cost_retail: 990, cost_level2: 880, retail: 1480, mix: 1380, vip: 1280 },
+            { name: "紫纖飲", cost_intern: 780, cost_coach: 635, cost_retail: 660, cost_level2: 580, retail: 990, mix: 900, vip: 830 },
+            { name: "爆纖錠", cost_intern: 660, cost_coach: 560, cost_retail: 580, cost_level2: 520, retail: 880, mix: 800, vip: 740 },
+            { name: "爆纖錠體驗包", cost_intern: 190, cost_coach: 158, cost_retail: 164, cost_level2: 146, retail: 240, mix: 240, vip: 240 }, 
+            { name: "植萃纖酵宿", cost_intern: 780, cost_coach: 635, cost_retail: 660, cost_level2: 580, retail: 990, mix: 900, vip: 830 },
+            { name: "纖酵宿體驗包", cost_intern: 145, cost_coach: 113, cost_retail: 117, cost_level2: 103, retail: 190, mix: 190, vip: 190 },
+            { name: "肽纖飲-可可", cost_intern: 780, cost_coach: 635, cost_retail: 660, cost_level2: 580, retail: 990, mix: 900, vip: 830 },
+            { name: "肽纖飲-奶茶", cost_intern: 780, cost_coach: 635, cost_retail: 660, cost_level2: 580, retail: 990, mix: 900, vip: 830 }
+        ],
+        health: [
+            { name: "葉黃素EX飲", cost_intern: 840, cost_coach: 695, cost_retail: 720, cost_level2: 640, retail: 1080, mix: 990, vip: 900 },
+            { name: "葉黃素晶亮凍", cost_intern: 530, cost_coach: 440, cost_retail: 455, cost_level2: 410, retail: 680, mix: 630, vip: 600 },
+            { name: "高機能益生菌", cost_intern: 990, cost_coach: 830, cost_retail: 860, cost_level2: 770, retail: 1280, mix: 1180, vip: 1100 },
+            { name: "九國英雄", cost_intern: 530, cost_coach: 440, cost_retail: 455, cost_level2: 410, retail: 680, mix: 630, vip: 600 },
+            { name: "正冠茶", cost_intern: 780, cost_coach: 635, cost_retail: 660, cost_level2: 580, retail: 990, mix: 900, vip: 830 },
+            { name: "固樂纖", cost_intern: 1260, cost_coach: 1040, cost_retail: 1080, cost_level2: 920, retail: 1680, mix: 1580, vip: 1480 }
+        ],
+        others: [
+            { name: "水光錠", cost_intern: 1260, cost_coach: 1040, cost_retail: 1080, cost_level2: 920, retail: 1680, mix: 1580, vip: 1480 },
+            { name: "水光繃帶面膜", cost_intern: 550, cost_coach: 485, cost_retail: 500, cost_level2: 450, retail: 700, mix: 650, vip: 600 },
+            { name: "水光繃帶面膜體驗包", cost_intern: 100, cost_coach: 87, cost_retail: 90, cost_level2: 80, retail: 150, mix: 150, vip: 150 },
+            { name: "雪聚露", cost_intern: 990, cost_coach: 830, cost_retail: 860, cost_level2: 770, retail: 1280, mix: 1180, vip: 1100 },
+            { name: "婕肌零洗卸凝膠", cost_intern: 780, cost_coach: 635, cost_retail: 660, cost_level2: 580, retail: 990, mix: 900, vip: 830 },
+            { name: "婕肌零體驗包(5ML/包)", cost_intern: 30, cost_coach: 24, cost_retail: 25, cost_level2: 20, retail: 40, mix: 40, vip: 40 },
+            { name: "Vitalab精純玻尿酸原液", cost_intern: 780, cost_coach: 635, cost_retail: 660, cost_level2: 580, retail: 990, mix: 900, vip: 830 },
+            { name: "急救小白瓶", cost_intern: 990, cost_coach: 830, cost_retail: 860, cost_level2: 770, retail: 1280, mix: 1180, vip: 1100 },
+            { name: "積雪草護手霜", cost_intern: 530, cost_coach: 440, cost_retail: 455, cost_level2: 410, retail: 680, mix: 630, vip: 600 },
+            { name: "法樂蓬洗髮露", cost_intern: 990, cost_coach: 830, cost_retail: 860, cost_level2: 770, retail: 1280, mix: 1180, vip: 1100 },
+            { name: "法樂蓬養髮原液", cost_intern: 840, cost_coach: 695, cost_retail: 720, cost_level2: 640, retail: 1080, mix: 990, vip: 900 },
+            { name: "法樂蓬洗髮露體驗包(30ML/包)", cost_intern: 24, cost_coach: 20, cost_retail: 21, cost_level2: 17, retail: 30, mix: 30, vip: 30 }
+        ]
+    };
+
+    // 處理階層切換與銷售對象更新
+    function selectTier(tier) {
+        // 1. 清空產品數量
+        document.querySelectorAll('.qty-input').forEach(input => {
+            input.value = '0';
+        });
+
+        // 2. UI 更新
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        activeTier = tier;
+        document.getElementById(`tier-${tier}`).classList.add('active');
+
+        // 3. 更新 Cost 標題
+        const tierLabels = {
+            'level2': '二級輔導成本',
+            'level3_coach': '三級輔導成本',
+            'level3_retail': '三級零售成本',
+            'intern': '實習加盟成本'
+        };
+        document.getElementById('activeTierName').textContent = tierLabels[tier];
+
+        // 4. 更新銷售對象選項
+        updateSalesTargetOptions(tier);
+
+        // 5. 重新計算
+        calculateTotal();
+    }
+
+    // 根據目前的 User Tier，決定「銷售對象」下拉選單的內容
+    function updateSalesTargetOptions(tier) {
+        const select = document.getElementById('salesTarget');
+        select.innerHTML = ''; // 清空
+
+        // 預設選項：一般零售顧客
+        const optionConsumer = new Option("一般零售顧客 (適用 VIP/混搭優惠)", "consumer");
+        select.add(optionConsumer);
+
+        if (tier === 'level2') {
+            // 二級輔導：可選 實習加盟 / 三級輔導 / 三級零售
+            select.add(new Option("實習加盟 (批發出貨)", "intern"));
+            select.add(new Option("三級輔導 (批發出貨)", "level3_coach"));
+            select.add(new Option("三級零售 (批發出貨)", "level3_retail")); 
+        } else if (tier === 'level3_coach') {
+            // 三級輔導：可選 實習加盟 / 三級零售
+            select.add(new Option("實習加盟 (批發出貨)", "intern"));
+            select.add(new Option("三級零售 (批發出貨)", "level3_retail")); 
+        }
+        
+        // 預設選回第一個
+        select.selectedIndex = 0;
+    }
+
+    // 初始化頁面
+    window.onload = function() {
+        document.getElementById('orderDate').valueAsDate = new Date();
+        renderProducts();
+        selectTier(activeTier); 
+    };
+
+    // 渲染產品列表
+    function renderProducts() {
+        const renderList = (items, containerId, category) => {
+            const container = document.getElementById(containerId);
+            const catName = category; 
+
+            container.innerHTML = items.map((p, index) => `
+                <div class="product-item">
+                    <div class="product-info">
+                        <span class="product-name">${p.name}</span>
+                        <span class="product-price-hint" id="price-hint-${catName}-${index}">
+                            單價 $${p.retail}
+                        </span>
+                    </div>
+                    <div class="qty-control">
+                        <div class="qty-btn" onclick="changeQty('${catName}', ${index}, -1)">-</div>
+                        <input type="text" class="qty-input" id="qty-${catName}-${index}" value="0" readonly>
+                        <div class="qty-btn" onclick="changeQty('${catName}', ${index}, 1)">+</div>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        renderList(products.slimming, 'slimming-list', 'slimming');
+        renderList(products.health, 'health-list', 'health');
+        renderList(products.others, 'others-list', 'others');
+    }
+
+    // 變更數量
+    function changeQty(category, index, delta) {
+        const input = document.getElementById(`qty-${category}-${index}`);
+        let newVal = parseInt(input.value) + delta;
+        if (newVal < 0) newVal = 0;
+        input.value = newVal;
+        calculateTotal();
+    }
+
+    // 計算總金額 (核心邏輯：嚴格區分零售與批發)
+    function calculateTotal() {
+        let totalQty = 0;
+        let rawRetailTotal = 0; 
+        let totalCost = 0;
+        let totalRevenue = 0;
+        let itemList = []; 
+        let currentMode = 'retail'; 
+
+        // 取得目前的銷售對象
+        const salesTarget = document.getElementById('salesTarget').value;
+        const isConsumer = (salesTarget === 'consumer');
+
+        // 1. 先計算總數量
+        // 若是消費者，才需要累積 rawRetailTotal 來判斷 VIP
+        Object.keys(products).forEach(cat => {
+            products[cat].forEach((p, idx) => {
+                const qtyInput = document.getElementById(`qty-${cat}-${idx}`);
+                if (qtyInput) {
+                    const qty = parseInt(qtyInput.value);
+                    totalQty += qty;
+                    // 永遠計算零售原價總額，供顯示或判斷用
+                    rawRetailTotal += p.retail * qty;
+                }
+            });
+        });
+
+        // 2. 控制 UI 顯示：只有在一般零售顧客時，才顯示「原零售總額」那一行，避免誤會
+        const rawRetailRow = document.getElementById('rawRetailRow');
+        if (isConsumer) {
+            rawRetailRow.classList.remove('hidden-row');
+        } else {
+            rawRetailRow.classList.add('hidden-row');
+        }
+
+        // 3. 判斷價格模式 (嚴格分流)
+        if (isConsumer) {
+            // --- 只有消費者才適用優惠 ---
+            if (rawRetailTotal >= 4000) {
+                currentMode = 'vip';
+            } else if (totalQty >= 2) {
+                currentMode = 'mix';
+            } else {
+                currentMode = 'retail';
+            }
+        } else {
+            // --- 非消費者 (代理/批發) 強制批發模式，不論金額數量 ---
+            currentMode = 'wholesale'; 
+        }
+
+        // 4. 更新上方狀態標籤
+        const statusTag = document.getElementById('priceStatus');
+        statusTag.className = 'status-tag'; // reset
+        
+        if (currentMode === 'vip') {
+            statusTag.textContent = "★ VIP 優惠價 (滿$4000)";
+            statusTag.classList.add('active-vip');
+        } else if (currentMode === 'mix') {
+            statusTag.textContent = "♥ 任選兩件優惠價";
+            statusTag.classList.add('active-mix');
+        } else if (currentMode === 'wholesale') {
+            const targetText = document.getElementById('salesTarget').options[document.getElementById('salesTarget').selectedIndex].text.split(' (')[0];
+            statusTag.textContent = `● ${targetText} (批發價)`;
+            statusTag.classList.add('active-wholesale');
+        } else {
+            statusTag.textContent = "單品計價中";
+        }
+
+        // 5. 根據模式計算最終金額
+        Object.keys(products).forEach(cat => {
+            products[cat].forEach((p, idx) => {
+                const qtyInput = document.getElementById(`qty-${cat}-${idx}`);
+                if (!qtyInput) return;
+
+                const qty = parseInt(qtyInput.value);
+                
+                // --- 決定單價 (Revenue) ---
+                let currentPrice = p.retail; // 預設原價
+
+                if (isConsumer) {
+                    // 一般消費者：看是 VIP 還是 Mix
+                    if (currentMode === 'vip') currentPrice = p.vip;
+                    else if (currentMode === 'mix') currentPrice = p.mix;
+                    // 否則維持 retail
+                } else {
+                    // 批發模式：嚴格根據對象鎖定價格 (不看 VIP/Mix)
+                    if (salesTarget === 'intern') {
+                        currentPrice = p.cost_intern;
+                    } else if (salesTarget === 'level3_coach') {
+                        currentPrice = p.cost_coach;
+                    } else if (salesTarget === 'level3_retail') {
+                        currentPrice = p.cost_retail;
+                    }
+                }
+
+                // --- UI 顯示單價提示 ---
+                const hintEl = document.getElementById(`price-hint-${cat}-${idx}`);
+                // 邏輯：只要有選數量，或者處於特殊模式，就顯示當前套用的價格
+                if (qty > 0 || currentMode !== 'retail') { 
+                    if (!isConsumer) {
+                        hintEl.textContent = `批發價 $${currentPrice}`;
+                        hintEl.style.color = '#2E7D32';
+                    } else if (currentMode === 'vip') {
+                        hintEl.textContent = `VIP價 $${p.vip} (原$${p.retail})`;
+                        hintEl.style.color = '#F57F17';
+                    } else if (currentMode === 'mix') {
+                        hintEl.textContent = `優惠價 $${p.mix} (原$${p.retail})`;
+                        hintEl.style.color = '#D81B60';
+                    } else {
+                        hintEl.textContent = `單價 $${p.retail}`;
+                        hintEl.style.color = 'var(--secondary-text)';
+                    }
+                } else {
+                    hintEl.textContent = `單價 $${p.retail}`;
+                    hintEl.style.color = 'var(--secondary-text)';
+                }
+
+                if (qty > 0) {
+                    // --- 決定成本 (Cost) ---
+                    let currentCost = 0;
+                    if (activeTier === 'intern') currentCost = p.cost_intern;
+                    else if (activeTier === 'level3_retail') currentCost = p.cost_retail;
+                    else if (activeTier === 'level3_coach') currentCost = p.cost_coach;
+                    else if (activeTier === 'level2') currentCost = p.cost_level2; 
+                    
+                    totalCost += currentCost * qty;
+                    totalRevenue += currentPrice * qty;
+                    itemList.push(`${p.name} x${qty}`);
+                }
+            });
+        });
+
+        // 6. 更新總結數值
+        document.getElementById('totalQty').textContent = totalQty;
+        document.getElementById('rawRetailTotal').textContent = `$${rawRetailTotal}`;
+        document.getElementById('totalCost').textContent = `$${totalCost}`;
+        document.getElementById('totalRevenue').textContent = `$${totalRevenue}`;
+        document.getElementById('totalProfit').textContent = `$${totalRevenue - totalCost}`;
+        
+        return {
+            totalCost,
+            totalRevenue,
+            profit: totalRevenue - totalCost,
+            itemsString: itemList.join(', '),
+            tier: activeTier,
+            salesTargetName: document.getElementById('salesTarget').options[document.getElementById('salesTarget').selectedIndex].text.split(' (')[0]
+        };
+    }
+
+    // --- Excel 導出邏輯 ---
+    async function exportToExcel() {
+        const calcResult = calculateTotal();
+        
+        if (calcResult.itemsString === "") {
+            alert("請至少選擇一樣產品！");
+            return;
+        }
+
+        const customerName = document.getElementById('customerName').value || "未命名";
+        const customerNote = document.getElementById('customerNote').value || "";
+        const orderDate = document.getElementById('orderDate').value;
+
+        // 識別成本級別
+        const tierLabels = {
+            'level2': '二級輔導',
+            'level3_coach': '三級輔導',
+            'level3_retail': '三級零售',
+            'intern': '實習加盟'
+        };
+        const tierLabel = tierLabels[calcResult.tier] || calcResult.tier;
+
+        // 當前這筆訂單
+        const newRecord = {
+            "成本級別": tierLabel, 
+            "下單日期": orderDate,
+            "顧客姓名": customerName,
+            "銷售對象": calcResult.salesTargetName, 
+            "購買品項": calcResult.itemsString,
+            "成本總計": calcResult.totalCost,
+            "零售總計": calcResult.totalRevenue,
+            "淨利潤": calcResult.profit,
+            "備註 (痛點)": customerNote
+        };
+
+        const fileInput = document.getElementById('oldFile');
+        let finalData = [];
+        let totalProfitSum = 0;
+
+        try {
+            if (fileInput.files.length > 0) {
+                let oldData = await readExcel(fileInput.files[0]);
+                
+                // 清洗舊資料
+                const cleanedOldData = oldData
+                    .filter(row => row["成本級別"] !== "總淨利總額")
+                    .map(row => {
+                        if (row["成本級別"] === undefined) row["成本級別"] = "實習加盟"; 
+                        if (row["銷售對象"] === undefined) row["銷售對象"] = "-"; 
+                        return row;
+                    });
+                finalData = [...cleanedOldData, newRecord];
+            } else {
+                finalData = [newRecord];
+            }
+
+            totalProfitSum = finalData.reduce((sum, row) => sum + (Number(row["淨利潤"]) || 0), 0);
+
+            finalData.push({
+                "成本級別": "總淨利總額",
+                "下單日期": "",
+                "顧客姓名": "",
+                "銷售對象": "",
+                "購買品項": "",
+                "成本總計": "",
+                "零售總計": "Total:",
+                "淨利潤": totalProfitSum,
+                "備註 (痛點)": ""
+            });
+
+            generateStyledExcel(finalData, orderDate);
+
+        } catch (e) {
+            alert("Excel 處理失敗：" + e.message);
+            console.error(e);
+        }
+    }
+
+    // 產生美化版 Excel
+    function generateStyledExcel(jsonData, dateStr) {
+        const wb = XLSX.utils.book_new();
+        const headers = ["成本級別", "下單日期", "顧客姓名", "銷售對象", "購買品項", "成本總計", "零售總計", "淨利潤", "備註 (痛點)"];
+        const ws = XLSX.utils.json_to_sheet(jsonData, { header: headers });
+
+        // --- 設定欄寬 ---
+        ws['!cols'] = [
+            { wch: 15 }, // 成本級別
+            { wch: 12 }, // 日期
+            { wch: 12 }, // 姓名
+            { wch: 15 }, // 銷售對象
+            { wch: 45 }, // 品項
+            { wch: 10 }, // 成本
+            { wch: 10 }, // 零售
+            { wch: 12 }, // 利潤
+            { wch: 35 }  // 備註
+        ];
+
+        // --- 套用樣式 ---
+        const range = XLSX.utils.decode_range(ws['!ref']);
+
+        const headerStyle = {
+            font: { name: "Microsoft JhengHei", sz: 12, bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "BCAaa4" } }, 
+            alignment: { horizontal: "center", vertical: "center" },
+            border: { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }
+        };
+
+        const normalStyle = {
+            font: { name: "Microsoft JhengHei", sz: 11 },
+            alignment: { vertical: "center", wrapText: true },
+            border: { top: { style: "thin", color: { rgb: "D7CCC8" } }, bottom: { style: "thin", color: { rgb: "D7CCC8" } }, left: { style: "thin", color: { rgb: "D7CCC8" } }, right: { style: "thin", color: { rgb: "D7CCC8" } } }
+        };
+
+        const totalRowStyle = {
+            font: { name: "Microsoft JhengHei", sz: 12, bold: true, color: { rgb: "D81B60" } },
+            fill: { fgColor: { rgb: "FFF8E1" } }, 
+            alignment: { horizontal: "center", vertical: "center" },
+            border: { top: { style: "double" } }
+        };
+        
+        const rightAlign = { alignment: { horizontal: "right" } };
+
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellRef = XLSX.utils.encode_cell({ c: C, r: R });
+                if (!ws[cellRef]) continue;
+                
+                if (R === 0) {
+                    ws[cellRef].s = headerStyle;
+                } 
+                else if (R === range.e.r && jsonData[jsonData.length-1]["成本級別"] === "總淨利總額") {
+                    ws[cellRef].s = totalRowStyle;
+                } 
+                else {
+                    ws[cellRef].s = normalStyle;
+                    if (C >= 5 && C <= 7) { 
+                        ws[cellRef].s = { ...normalStyle, ...rightAlign };
+                        if (C > 4) ws[cellRef].t = 'n';
+                    }
+                }
+            }
+        }
+        
+        XLSX.utils.book_append_sheet(wb, ws, "訂單紀錄");
+        XLSX.writeFile(wb, `GiverTeam_Orders_${dateStr}.xlsx`);
+    }
+
+    // 讀取 Excel
+    function readExcel(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (json.length === 0) return resolve([]);
+                    const headers = json[0];
+                    const dataRows = json.slice(1);
+
+                    const result = dataRows.map(row => {
+                        let obj = {};
+                        headers.forEach((header, index) => {
+                            obj[header] = row[index];
+                        });
+                        return obj;
+                    });
+                    resolve(result);
+                } catch (error) { reject(error); }
+            };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+</script>
+
+</body>
+</html>
