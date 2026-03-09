@@ -469,7 +469,7 @@
         others: [
             { name: "水光錠", cost_intern: 1260, cost_coach: 1040, cost_retail: 1080, cost_level2: 920, retail: 1680, mix: 1580, vip: 1480 },
             { name: "水光繃帶面膜", cost_intern: 550, cost_coach: 485, cost_retail: 500, cost_level2: 450, retail: 700, mix: 650, vip: 600 },
-            { name: "水光繃帶面膜體驗包", cost_intern: 100, cost_coach: 87, cost_retail: 90, cost_level2: 80, retail: 150, mix: 150, vip: 150 },
+            //{ name: "水光繃帶面膜體驗包", cost_intern: 110, cost_coach: 97, cost_retail: 100, cost_level2: 90, retail: 150, mix: 150, vip: 150 },
             { name: "雪聚露", cost_intern: 990, cost_coach: 830, cost_retail: 860, cost_level2: 770, retail: 1280, mix: 1180, vip: 1100 },
             { name: "婕肌零洗卸凝膠", cost_intern: 780, cost_coach: 635, cost_retail: 660, cost_level2: 580, retail: 990, mix: 900, vip: 830 },
             { name: "婕肌零體驗包(5ML/包)", cost_intern: 30, cost_coach: 24, cost_retail: 25, cost_level2: 20, retail: 40, mix: 40, vip: 40 },
@@ -578,34 +578,48 @@
         calculateTotal();
     }
 
-    // 計算總金額 (核心邏輯：嚴格區分零售與批發)
+    // 計算總金額 (核心邏輯：VIP 門檻與優惠均完全排除體驗包)
     function calculateTotal() {
-        let totalQty = 0;
-        let rawRetailTotal = 0; 
+        let totalQty = 0;              // 總購買數量
+        let promoEligibleQty = 0;      // 符合 Mix 資格的數量 (排除體驗包)
+        let eligibleRetailTotal = 0;   // 符合 VIP 門檻的零售總額 (排除體驗包)
+        let rawRetailTotal = 0;        // 帳面上所有商品的零售總額
         let totalCost = 0;
         let totalRevenue = 0;
         let itemList = []; 
         let currentMode = 'retail'; 
 
-        // 取得目前的銷售對象
+        // 定義排除在優惠外的體驗包名稱
+        const excludedItems = [
+            "水光繃帶面膜體驗包",
+            "婕肌零體驗包(5ML/包)",
+            "法樂蓬洗髮露體驗包(30ML/包)"
+        ];
+
         const salesTarget = document.getElementById('salesTarget').value;
         const isConsumer = (salesTarget === 'consumer');
 
-        // 1. 先計算總數量
-        // 若是消費者，才需要累積 rawRetailTotal 來判斷 VIP
+        // 1. 第一輪掃描：判斷優惠資格
         Object.keys(products).forEach(cat => {
             products[cat].forEach((p, idx) => {
                 const qtyInput = document.getElementById(`qty-${cat}-${idx}`);
                 if (qtyInput) {
                     const qty = parseInt(qtyInput.value);
-                    totalQty += qty;
-                    // 永遠計算零售原價總額，供顯示或判斷用
-                    rawRetailTotal += p.retail * qty;
+                    if (qty > 0) {
+                        totalQty += qty;
+                        rawRetailTotal += p.retail * qty;
+                        
+                        // 檢查是否為「非體驗包」
+                        if (!excludedItems.includes(p.name)) {
+                            promoEligibleQty += qty;           // 計入 Mix 門檻
+                            eligibleRetailTotal += p.retail * qty; // 計入 VIP 門檻 ($4000)
+                        }
+                    }
                 }
             });
         });
 
-        // 2. 控制 UI 顯示：只有在一般零售顧客時，才顯示「原零售總額」那一行，避免誤會
+        // 2. 控制 UI 顯示
         const rawRetailRow = document.getElementById('rawRetailRow');
         if (isConsumer) {
             rawRetailRow.classList.remove('hidden-row');
@@ -613,80 +627,76 @@
             rawRetailRow.classList.add('hidden-row');
         }
 
-        // 3. 判斷價格模式 (嚴格分流)
+        // 3. 判斷價格模式 (關鍵修正：VIP 門檻改用 eligibleRetailTotal)
         if (isConsumer) {
-            // --- 只有消費者才適用優惠 ---
-            if (rawRetailTotal >= 4000) {
+            if (eligibleRetailTotal >= 4000) {
                 currentMode = 'vip';
-            } else if (totalQty >= 2) {
+            } else if (promoEligibleQty >= 2) {
                 currentMode = 'mix';
             } else {
                 currentMode = 'retail';
             }
         } else {
-            // --- 非消費者 (代理/批發) 強制批發模式，不論金額數量 ---
             currentMode = 'wholesale'; 
         }
 
-        // 4. 更新上方狀態標籤
+        // 4. 更新狀態標籤
         const statusTag = document.getElementById('priceStatus');
-        statusTag.className = 'status-tag'; // reset
+        statusTag.className = 'status-tag'; 
         
         if (currentMode === 'vip') {
-            statusTag.textContent = "★ VIP 優惠價 (滿$4000)";
+            statusTag.textContent = "★ VIP 優惠價 (排除體驗包計價)";
             statusTag.classList.add('active-vip');
         } else if (currentMode === 'mix') {
-            statusTag.textContent = "♥ 任選兩件優惠價";
+            statusTag.textContent = "♥ 任選兩件優惠價 (排除體驗包計價)";
             statusTag.classList.add('active-mix');
         } else if (currentMode === 'wholesale') {
-            const targetText = document.getElementById('salesTarget').options[document.getElementById('salesTarget').selectedIndex].text.split(' (')[0];
-            statusTag.textContent = `● ${targetText} (批發價)`;
+            const targetName = document.getElementById('salesTarget').options[document.getElementById('salesTarget').selectedIndex].text.split(' (')[0];
+            statusTag.textContent = `● ${targetName} (批發價)`;
             statusTag.classList.add('active-wholesale');
         } else {
             statusTag.textContent = "單品計價中";
         }
 
-        // 5. 根據模式計算最終金額
+        // 5. 第二輪掃描：計算最終金額與顯示單價提示
         Object.keys(products).forEach(cat => {
             products[cat].forEach((p, idx) => {
                 const qtyInput = document.getElementById(`qty-${cat}-${idx}`);
                 if (!qtyInput) return;
 
                 const qty = parseInt(qtyInput.value);
-                
-                // --- 決定單價 (Revenue) ---
-                let currentPrice = p.retail; // 預設原價
+                const isExcluded = excludedItems.includes(p.name);
+                let currentPrice = p.retail; 
 
                 if (isConsumer) {
-                    // 一般消費者：看是 VIP 還是 Mix
-                    if (currentMode === 'vip') currentPrice = p.vip;
-                    else if (currentMode === 'mix') currentPrice = p.mix;
-                    // 否則維持 retail
-                } else {
-                    // 批發模式：嚴格根據對象鎖定價格 (不看 VIP/Mix)
-                    if (salesTarget === 'intern') {
-                        currentPrice = p.cost_intern;
-                    } else if (salesTarget === 'level3_coach') {
-                        currentPrice = p.cost_coach;
-                    } else if (salesTarget === 'level3_retail') {
-                        currentPrice = p.cost_retail;
+                    if (currentMode === 'vip') {
+                        // VIP 模式：非體驗包才給 VIP 價
+                        currentPrice = isExcluded ? p.retail : p.vip;
+                    } else if (currentMode === 'mix') {
+                        // Mix 模式：非體驗包才給 Mix 價
+                        currentPrice = isExcluded ? p.retail : p.mix;
                     }
+                } else {
+                    // 批發模式：依代理身分給價
+                    if (salesTarget === 'intern') currentPrice = p.cost_intern;
+                    else if (salesTarget === 'level3_coach') currentPrice = p.cost_coach;
+                    else if (salesTarget === 'level3_retail') currentPrice = p.cost_retail;
                 }
 
-                // --- UI 顯示單價提示 ---
+                // UI 單價提示邏輯
                 const hintEl = document.getElementById(`price-hint-${cat}-${idx}`);
-                // 邏輯：只要有選數量，或者處於特殊模式，就顯示當前套用的價格
                 if (qty > 0 || currentMode !== 'retail') { 
                     if (!isConsumer) {
                         hintEl.textContent = `批發價 $${currentPrice}`;
                         hintEl.style.color = '#2E7D32';
-                    } else if (currentMode === 'vip') {
+                    } else if (currentMode === 'vip' && !isExcluded) {
                         hintEl.textContent = `VIP價 $${p.vip} (原$${p.retail})`;
                         hintEl.style.color = '#F57F17';
-                    } else if (currentMode === 'mix') {
+                    } else if (currentMode === 'mix' && !isExcluded) {
                         hintEl.textContent = `優惠價 $${p.mix} (原$${p.retail})`;
                         hintEl.style.color = '#D81B60';
                     } else {
+                        // 體驗包或是排除品項，維持原單價顯示
                         hintEl.textContent = `單價 $${p.retail}`;
                         hintEl.style.color = 'var(--secondary-text)';
                     }
@@ -696,7 +706,6 @@
                 }
 
                 if (qty > 0) {
-                    // --- 決定成本 (Cost) ---
                     let currentCost = 0;
                     if (activeTier === 'intern') currentCost = p.cost_intern;
                     else if (activeTier === 'level3_retail') currentCost = p.cost_retail;
@@ -710,7 +719,7 @@
             });
         });
 
-        // 6. 更新總結數值
+        // 6. 更新總結面板
         document.getElementById('totalQty').textContent = totalQty;
         document.getElementById('rawRetailTotal').textContent = `$${rawRetailTotal}`;
         document.getElementById('totalCost').textContent = `$${totalCost}`;
