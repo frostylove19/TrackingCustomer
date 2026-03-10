@@ -948,20 +948,19 @@
 
     // 2. 關鍵修正：確保前面有加上 window.
   window.handleLogout = function() {
-    console.log("登出按鈕已點擊"); // 用來確認按鈕有連通
-
     if (confirm("確定要登出系統嗎？")) {
-      signOut(auth)
-        .then(() => {
-          console.log("登出成功");
-          // 不需要手動切換畫面，onAuthStateChanged 會自動處理
-        })
-        .catch((error) => {
-          console.error("登出出錯:", error);
-          alert("登出失敗，請稍後再試");
+        // 在登出前，先清空登入介面的提示文字
+        const errorMsg = document.getElementById('login-error');
+        if (errorMsg) {
+            errorMsg.innerText = ""; 
+            errorMsg.style.display = 'none';
+        }
+
+        signOut(auth).catch((error) => {
+            console.error("登出失敗:", error);
         });
     }
-  };
+};
 
   // 3. 定義登入動作 (掛載到 window 確保 HTML 按鈕點得到)
   window.handleLogin = function() {
@@ -1031,6 +1030,7 @@ onAuthStateChanged(auth, (user) => {
 </script>
 </body>
 </html>
+
 
 
 
