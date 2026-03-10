@@ -999,30 +999,39 @@
       });
   };
 
-  // 4. 監控登入狀態
-  onAuthStateChanged(auth, (user) => {
+  //  設定「關閉分頁即登出」 (這行要放在最外面)
+setPersistence(auth, browserSessionPersistence);
+
+// 4. 監控登入狀態 (優化 UI 重置)
+onAuthStateChanged(auth, (user) => {
     const loginOverlay = document.getElementById('login-overlay');
     const mainApp = document.getElementById('main-app');
-
-    // 加入安全檢查，確保 HTML 元素存在才執行
-    if (!loginOverlay || !mainApp) {
-      console.warn("找不到 login-overlay 或 main-app 元素");
-      return;
-    }
+    const errorMsg = document.getElementById('login-error'); // 抓取錯誤訊息標籤
 
     if (user) {
-      // 已登入
-      loginOverlay.style.display = 'none';
-      mainApp.style.display = 'block';
+        // 已登入：隱藏登入牆，顯示主程式
+        loginOverlay.style.display = 'none';
+        mainApp.style.display = 'block';
+        
+        // 🟢 重置登入介面的狀態，避免下次登出後還看得到「驗證中」
+        if (errorMsg) {
+            errorMsg.innerText = "";
+            errorMsg.style.display = 'none';
+        }
     } else {
-      // 未登入
-      loginOverlay.style.display = 'flex';
-      mainApp.style.display = 'none';
+        // 未登入：顯示登入牆，隱藏主程式
+        loginOverlay.style.display = 'flex';
+        mainApp.style.display = 'none';
+        
+        // 🟢 確保登入表單的輸入框是空的 (選選)
+        document.getElementById('login-email').value = "";
+        document.getElementById('login-password').value = "";
     }
-  });
+});
 </script>
 </body>
 </html>
+
 
 
 
