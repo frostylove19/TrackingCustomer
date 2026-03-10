@@ -924,15 +924,11 @@
 
 </script>
 <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
+  // 1. 統一版本為 10.8.0，避免版本衝突導致的 auth is not defined
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  // 你的 Firebase 設定
   const firebaseConfig = {
     apiKey: "AIzaSyAF3hRQ-ODvpPf2AwXiEOeiBayHujKz6xY",
     authDomain: "giverteamsystem.firebaseapp.com",
@@ -943,33 +939,63 @@
     measurementId: "G-Q1QWT10ZDV"
   };
 
-  // Initialize Firebase
+  // 2. 初始化 Firebase 與 Auth
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  // 登入按鈕動作
+
+  // 3. 定義登入動作 (掛載到 window 確保 HTML 按鈕點得到)
   window.handleLogin = function() {
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
     const errorMsg = document.getElementById('login-error');
 
+    if (!email || !password) {
+      errorMsg.style.display = 'block';
+      errorMsg.innerText = "請輸入帳號與密碼";
+      return;
+    }
+
+    errorMsg.style.display = 'block';
+    errorMsg.innerText = "驗證中...";
+    errorMsg.style.color = "#8E8071";
+
     signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        console.log("登入成功！");
+      })
       .catch((error) => {
         errorMsg.style.display = 'block';
-        console.error("Login failed:", error.message);
+        errorMsg.style.color = "red";
+        console.error("Login failed code:", error.code);
+        
+        // 具體的中文錯誤提示
+        if (error.code === 'auth/invalid-credential') {
+          errorMsg.innerText = "帳號或密碼錯誤";
+        } else if (error.code === 'auth/invalid-email') {
+          errorMsg.innerText = "Email 格式不正確";
+        } else {
+          errorMsg.innerText = "登入失敗：" + error.code;
+        }
       });
   };
 
-  // 監控登入狀態
+  // 4. 監控登入狀態
   onAuthStateChanged(auth, (user) => {
     const loginOverlay = document.getElementById('login-overlay');
     const mainApp = document.getElementById('main-app');
 
+    // 加入安全檢查，確保 HTML 元素存在才執行
+    if (!loginOverlay || !mainApp) {
+      console.warn("找不到 login-overlay 或 main-app 元素");
+      return;
+    }
+
     if (user) {
-      // 已登入：隱藏登入牆，顯示主程式
+      // 已登入
       loginOverlay.style.display = 'none';
       mainApp.style.display = 'block';
     } else {
-      // 未登入：顯示登入牆，隱藏主程式
+      // 未登入
       loginOverlay.style.display = 'flex';
       mainApp.style.display = 'none';
     }
@@ -977,6 +1003,7 @@
 </script>
 </body>
 </html>
+
 
 
 
