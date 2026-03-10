@@ -945,8 +945,7 @@
 
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  const auth = getAuth(initializeApp(firebaseConfig));
+  const auth = getAuth(app);
   // 登入按鈕動作
   window.handleLogin = function() {
     const email = document.getElementById('login-email').value;
@@ -978,5 +977,6 @@
 </script>
 </body>
 </html>
+
 
 
