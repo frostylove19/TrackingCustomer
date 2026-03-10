@@ -929,7 +929,7 @@
 <script type="module">
   // 1. 統一版本為 10.8.0，避免版本衝突導致的 auth is not defined
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
   // 你的 Firebase 設定
   const firebaseConfig = {
@@ -945,6 +945,19 @@
   // 2. 初始化 Firebase 與 Auth
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
+
+    window.handleLogout = function() {
+    // 簡單跳出確認視窗，避免誤點
+    if(confirm("確定要登出系統嗎？")) {
+        signOut(auth).then(() => {
+            console.log("登出成功");
+            // 這裡不需要手動隱藏 main-app，
+            // 因為下方的 onAuthStateChanged 會自動偵測到登出並幫你換頁！
+        }).catch((error) => {
+            console.error("登出失敗:", error);
+        });
+    }
+};
 
   // 3. 定義登入動作 (掛載到 window 確保 HTML 按鈕點得到)
   window.handleLogin = function() {
@@ -1006,6 +1019,7 @@
 </script>
 </body>
 </html>
+
 
 
 
